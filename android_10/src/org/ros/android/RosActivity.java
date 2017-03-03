@@ -24,6 +24,8 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.AsyncTask;
 import android.os.IBinder;
+import android.util.Log;
+
 import org.ros.address.InetAddressFactory;
 import org.ros.exception.RosRuntimeException;
 import org.ros.node.NodeMain;
@@ -33,16 +35,17 @@ import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.concurrent.ExecutionException;
 
 /**
  * @author damonkohler@google.com (Damon Kohler)
  */
 public abstract class RosActivity extends Activity {
 
+  private final String LOG_TAG = getClass().getSimpleName();
+
   private static final int MASTER_CHOOSER_REQUEST_CODE = 0;
 
-  private final ServiceConnection nodeMainExecutorServiceConnection;
+  private final NodeMainExecutorServiceConnection nodeMainExecutorServiceConnection;
   private final String notificationTicker;
   private final String notificationTitle;
 
@@ -50,6 +53,7 @@ public abstract class RosActivity extends Activity {
 
   private final class NodeMainExecutorServiceConnection implements ServiceConnection {
 
+    private NodeMainExecutorServiceListener serviceListener;
     private URI customMasterUri;
 
     public NodeMainExecutorServiceConnection(URI customUri) {
@@ -65,7 +69,8 @@ public abstract class RosActivity extends Activity {
         nodeMainExecutorService.setMasterUri(customMasterUri);
         nodeMainExecutorService.setRosHostname(getDefaultHostAddress());
       }
-      nodeMainExecutorService.addListener(new NodeMainExecutorServiceListener() {
+
+      serviceListener = new NodeMainExecutorServiceListener() {
         @Override
         public void onShutdown(NodeMainExecutorService nodeMainExecutorService) {
           // We may have added multiple shutdown listeners and we only want to
@@ -74,7 +79,8 @@ public abstract class RosActivity extends Activity {
             RosActivity.this.finish();
           }
         }
-      });
+      };
+      nodeMainExecutorService.addListener(serviceListener);
       if (getMasterUri() == null) {
         startMasterChooser();
       } else {
@@ -84,7 +90,16 @@ public abstract class RosActivity extends Activity {
 
     @Override
     public void onServiceDisconnected(ComponentName name) {
+      nodeMainExecutorService.removeListener(serviceListener);
+      serviceListener = null;
+      //nodeMainExecutorService = null;
     }
+
+    public NodeMainExecutorServiceListener getServiceListener()
+    {
+      return serviceListener;
+    }
+
   };
 
   protected RosActivity(String notificationTicker, String notificationTitle) {
@@ -118,6 +133,8 @@ public abstract class RosActivity extends Activity {
   @Override
   protected void onDestroy() {
     unbindService(nodeMainExecutorServiceConnection);
+    nodeMainExecutorService.
+            removeListener(nodeMainExecutorServiceConnection.getServiceListener());
     super.onDestroy();
   }
 

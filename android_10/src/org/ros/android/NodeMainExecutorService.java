@@ -156,6 +156,11 @@ public class NodeMainExecutorService extends Service implements NodeMainExecutor
     listeners.add(listener);
   }
 
+  public void removeListener(NodeMainExecutorServiceListener listener)
+  {
+    listeners.remove(listener);
+  }
+
   private void signalOnShutdown() {
     listeners.signal(new SignalRunnable<NodeMainExecutorServiceListener>() {
       @Override
@@ -211,6 +216,7 @@ public class NodeMainExecutorService extends Service implements NodeMainExecutor
   public IBinder onBind(Intent intent) {
     return binder;
   }
+
 
   public URI getMasterUri() {
     return masterUri;
