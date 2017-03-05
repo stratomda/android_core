@@ -24,7 +24,6 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.AsyncTask;
 import android.os.IBinder;
-import android.util.Log;
 
 import org.ros.address.InetAddressFactory;
 import org.ros.exception.RosRuntimeException;
@@ -40,8 +39,6 @@ import java.net.URISyntaxException;
  * @author damonkohler@google.com (Damon Kohler)
  */
 public abstract class RosActivity extends Activity {
-
-  private final String LOG_TAG = getClass().getSimpleName();
 
   private static final int MASTER_CHOOSER_REQUEST_CODE = 0;
 
@@ -92,7 +89,6 @@ public abstract class RosActivity extends Activity {
     public void onServiceDisconnected(ComponentName name) {
       nodeMainExecutorService.removeListener(serviceListener);
       serviceListener = null;
-      //nodeMainExecutorService = null;
     }
 
     public NodeMainExecutorServiceListener getServiceListener()
