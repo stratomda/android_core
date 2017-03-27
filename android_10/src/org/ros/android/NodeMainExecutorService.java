@@ -63,10 +63,11 @@ public class NodeMainExecutorService extends Service implements NodeMainExecutor
   // NOTE(damonkohler): If this is 0, the notification does not show up.
   private static final int ONGOING_NOTIFICATION = 1;
 
-  static final String ACTION_START = "org.ros.android.ACTION_START_NODE_RUNNER_SERVICE";
-  static final String ACTION_SHUTDOWN = "org.ros.android.ACTION_SHUTDOWN_NODE_RUNNER_SERVICE";
-  static final String EXTRA_NOTIFICATION_TITLE = "org.ros.android.EXTRA_NOTIFICATION_TITLE";
-  static final String EXTRA_NOTIFICATION_TICKER = "org.ros.android.EXTRA_NOTIFICATION_TICKER";
+  public static final String ACTION_START = "org.ros.android.ACTION_START_NODE_RUNNER_SERVICE";
+  public static final String ACTION_SHUTDOWN = "org.ros.android.ACTION_SHUTDOWN_NODE_RUNNER_SERVICE";
+  public static final String EXTRA_NOTIFICATION_TITLE = "org.ros.android.EXTRA_NOTIFICATION_TITLE";
+  public static final String EXTRA_NOTIFICATION_TICKER = "org.ros.android.EXTRA_NOTIFICATION_TICKER";
+  public static final String EXTRA_NOTIFICATION_ICON = "org.ros.android.EXTRA_NOTIFICATION_ICON";
 
   private final NodeMainExecutor nodeMainExecutor;
   private final IBinder binder;
@@ -78,13 +79,15 @@ public class NodeMainExecutorService extends Service implements NodeMainExecutor
   private RosCore rosCore;
   private URI masterUri;
   private String rosHostname;
+  private int icon = R.mipmap.icon;
+  private String title = "";
 
   /**
    * Class for clients to access. Because we know this service always runs in
    * the same process as its clients, we don't need to deal with IPC.
    */
-  class LocalBinder extends Binder {
-    NodeMainExecutorService getService() {
+  public class LocalBinder extends Binder {
+    public NodeMainExecutorService getService() {
       return NodeMainExecutorService.this;
     }
   }
@@ -140,27 +143,7 @@ public class NodeMainExecutorService extends Service implements NodeMainExecutor
 
   @Override
   public void shutdown() {
-    handler.post(new Runnable() {
-      @Override
-      public void run() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(NodeMainExecutorService.this);
-        builder.setMessage("Continue shutting down?");
-        builder.setPositiveButton("Shutdown", new OnClickListener() {
-          @Override
-          public void onClick(DialogInterface dialog, int which) {
-            forceShutdown();
-          }
-        });
-        builder.setNegativeButton("Cancel", new OnClickListener() {
-          @Override
-          public void onClick(DialogInterface dialog, int which) {
-          }
-        });
-        AlertDialog alertDialog = builder.create();
-        alertDialog.getWindow().setType(WindowManager.LayoutParams.TYPE_SYSTEM_ALERT);
-        alertDialog.show();
-      }
-    });
+    forceShutdown();
   }
 
   public void forceShutdown() {
@@ -189,7 +172,7 @@ public class NodeMainExecutorService extends Service implements NodeMainExecutor
 
   @Override
   public void onDestroy() {
-    toast("Shutting down...");
+    toast("Shutting down "+ title + "...");
     nodeMainExecutor.shutdown();
     if (rosCore != null) {
       rosCore.shutdown();
@@ -211,14 +194,16 @@ public class NodeMainExecutorService extends Service implements NodeMainExecutor
     if (intent.getAction().equals(ACTION_START)) {
       Preconditions.checkArgument(intent.hasExtra(EXTRA_NOTIFICATION_TICKER));
       Preconditions.checkArgument(intent.hasExtra(EXTRA_NOTIFICATION_TITLE));
+      icon = intent.getIntExtra(EXTRA_NOTIFICATION_ICON, icon);
+      title = intent.getStringExtra(EXTRA_NOTIFICATION_TITLE);
+
       Notification notification =
-          new Notification(R.mipmap.icon, intent.getStringExtra(EXTRA_NOTIFICATION_TICKER),
+          new Notification(icon, intent.getStringExtra(EXTRA_NOTIFICATION_TICKER),
               System.currentTimeMillis());
       Intent notificationIntent = new Intent(this, NodeMainExecutorService.class);
       notificationIntent.setAction(NodeMainExecutorService.ACTION_SHUTDOWN);
       PendingIntent pendingIntent = PendingIntent.getService(this, 0, notificationIntent, 0);
-      notification.setLatestEventInfo(this, intent.getStringExtra(EXTRA_NOTIFICATION_TITLE),
-          "Tap to shutdown.", pendingIntent);
+      notification.setLatestEventInfo(this, title, "Click to Shutdown.", pendingIntent);
       startForeground(ONGOING_NOTIFICATION, notification);
     }
     if (intent.getAction().equals(ACTION_SHUTDOWN)) {
@@ -231,6 +216,7 @@ public class NodeMainExecutorService extends Service implements NodeMainExecutor
   public IBinder onBind(Intent intent) {
     return binder;
   }
+
 
   public URI getMasterUri() {
     return masterUri;
